@@ -1,0 +1,123 @@
+# Cryptographic Algorithms for Ziglang
+
+A pure Zig implementation of 20 core cryptographic algorithms with **zero std or external library imports**. All helpers are written from scratch.
+
+## Repository Structure
+
+```
+├── utils.zig                           # Shared helpers (BigInt, endian, bit ops)
+├── build.zig                           # Build script with test runner
+├── Cryptographic Hash Functions/
+│   ├── SHA-256.zig                      # SHA-256 + SHA-512
+│   ├── SHA3.zig                         # SHA3-256 + SHAKE128 + SHAKE256
+│   ├── BLAKE2.zig                       # BLAKE2b
+│   └── BLAKE3.zig                       # BLAKE3
+├── Symmetric Key Cryptography/
+│   ├── AES.zig                          # AES-128 + AES-256
+│   ├── ChaCha20.zig                     # ChaCha20 + HChaCha20
+│   ├── TripleDES.zig                    # DES + TripleDES EDE
+│   └── Blowfish.zig                     # Blowfish
+├── Password Hashing & Key Derivation/
+│   ├── PBKDF2.zig                       # PBKDF2-HMAC-SHA256
+│   ├── bcrypt.zig                        # bcrypt
+│   ├── scrypt.zig                        # scrypt (Salsa20/8 + PBKDF2)
+│   └── Argon2.zig                        # Argon2id
+├── Asymmetric Cryptography & Key Exchange/
+│   ├── RSA.zig                          # RSA encrypt/decrypt/sign/verify
+│   ├── DiffieHellman.zig                 # Classic DH + X25519
+│   ├── ECDSA.zig                        # ECDSA (secp256k1)
+│   └── EdDSA.zig                        # EdDSA (Ed25519)
+└── Post-Quantum Cryptography/
+    ├── ML-KEM.zig                       # ML-KEM (Kyber) - Kyber768
+    ├── ML-DSA.zig                       # ML-DSA (Dilithium) - Dilithium65
+    ├── SLH-DSA.zig                      # SLH-DSA (SPHINCS+)
+    └── NTRU.zig                         # NTRU-HPS
+```
+
+## Algorithms Implemented
+
+### Cryptographic Hash Functions (4)
+| Algorithm | File | Notes |
+|-----------|------|-------|
+| SHA-256 | `SHA-256.zig` | + SHA-512 |
+| SHA3-256 | `SHA3.zig` | + SHAKE128, SHAKE256 |
+| BLAKE2b | `BLAKE2.zig` | 64-bit optimized |
+| BLAKE3 | `BLAKE3.zig` | Streaming hash |
+
+### Symmetric Key Cryptography (4)
+| Algorithm | File | Notes |
+|-----------|------|-------|
+| AES-128 | `AES.zig` | + AES-256, encrypt/decrypt |
+| ChaCha20 | `ChaCha20.zig` | + HChaCha20 |
+| TripleDES | `TripleDES.zig` | DES + 3-key EDE |
+| Blowfish | `Blowfish.zig` | 64-bit block cipher |
+
+### Password Hashing & Key Derivation (4)
+| Algorithm | File | Notes |
+|-----------|------|-------|
+| PBKDF2 | `PBKDF2.zig` | HMAC-SHA256 based |
+| bcrypt | `bcrypt.zig` | EksBlowfish |
+| scrypt | `scrypt.zig` | Salsa20/8 + PBKDF2 |
+| Argon2 | `Argon2.zig` | Argon2id |
+
+### Asymmetric Cryptography & Key Exchange (4)
+| Algorithm | File | Notes |
+|-----------|------|-------|
+| RSA | `RSA.zig` | Up to 2048-bit, OAEP, PSS |
+| Diffie-Hellman | `DiffieHellman.zig` | Classic DH + X25519 |
+| ECDSA | `ECDSA.zig` | secp256k1 curve |
+| EdDSA | `EdDSA.zig` | Ed25519 |
+
+### Post-Quantum Cryptography (4)
+| Algorithm | File | Notes |
+|-----------|------|-------|
+| ML-KEM | `ML-KEM.zig` | Kyber768 (NIST Level 3) |
+| ML-DSA | `ML-DSA.zig` | Dilithium65 (NIST Level 3) |
+| SLH-DSA | `SLH-DSA.zig` | SPHINCS+-SHA2-128f |
+| NTRU | `NTRU.zig` | NTRU-HPS2048509 |
+
+## Design Principles
+
+- **No std imports** - All helpers written from scratch
+- **No external dependencies** - Pure Zig standard library
+- **Shared utils.zig** - BigInt (64 limb, 2048-bit max), rotl/rotr, endian R/W, memory utils
+- **No dynamic allocation** - All fixed-size arrays
+- **Test blocks included** - Each file has embedded tests with known test vectors
+
+## Building & Testing
+
+```bash
+# Build all and run tests
+zig build test
+
+# Or test individual files
+zig test utils.zig
+zig test "Cryptographic Hash Functions/SHA-256.zig"
+```
+
+## Key Implementation Details
+
+### BigInt (utils.zig)
+- 64-bit limbs, max 2048 bits (64 limbs)
+- Operations: add, sub, mul, divMod, modPow, modInverse, gcd
+- Endian conversion: readU32/64Be/Le, writeU32/64Be/Le
+- Memory: zero, copyBytes, equalConstTime, fillBytes
+
+### Algorithm Dependencies
+- SHA-256 used by: PBKDF2, bcrypt, scrypt, ECDSA
+- SHA3/SHAKE used by: ML-KEM, ML-DSA, SLH-DSA
+- BLAKE2b used by: Argon2
+- Salsa20/8 inlined in: scrypt (not full ChaCha20)
+- HMAC-SHA256 inlined in: PBKDF2, scrypt
+
+## Known Limitations
+
+- **Blowfish**: S[1]-S[3] S-boxes contain placeholder values after first entries
+- **Post-Quantum algorithms**: Reference implementations, not full RFC 9106/8017 compliant
+- **EdDSA**: Simplified, not full RFC 8032
+- **BigInt**: Max 2048-bit, sufficient for RSA-2048
+- **No AES-256 decrypt** in current AES.zig implementation
+
+## License
+
+MIT
