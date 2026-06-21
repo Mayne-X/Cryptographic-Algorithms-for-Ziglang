@@ -1,0 +1,321 @@
+const u = @import("../utils.zig");
+
+pub const Aes128 = struct {
+    enc_keys: [11][4]u32,
+    dec_keys: [11][4]u32,
+
+    const SBOX = [256]u8{
+        0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+        0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+        0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+        0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+        0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+        0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+        0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+        0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+        0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+        0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+        0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+        0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+        0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+        0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+        0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+        0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
+    };
+
+    const INV_SBOX = [256]u8{
+        0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+        0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+        0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+        0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+        0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+        0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+        0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+        0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+        0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+        0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+        0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
+        0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+        0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
+        0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
+        0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+        0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d,
+    };
+
+    const RCON = [10]u8{ 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
+
+    fn subWord(w: u32) u32 {
+        return @as(u32, SBOX[(w >> 24) & 0xFF]) << 24 |
+            @as(u32, SBOX[(w >> 16) & 0xFF]) << 16 |
+            @as(u32, SBOX[(w >> 8) & 0xFF]) << 8 |
+            @as(u32, SBOX[w & 0xFF]);
+    }
+
+    fn invSubWord(w: u32) u32 {
+        return @as(u32, INV_SBOX[(w >> 24) & 0xFF]) << 24 |
+            @as(u32, INV_SBOX[(w >> 16) & 0xFF]) << 16 |
+            @as(u32, INV_SBOX[(w >> 8) & 0xFF]) << 8 |
+            @as(u32, INV_SBOX[w & 0xFF]);
+    }
+
+    fn rotWord(w: u32) u32 {
+        return (w << 8) | (w >> 24);
+    }
+
+    pub fn init(key: *const [16]u8) Aes128 {
+        var s = Aes128{ .enc_keys = undefined, .dec_keys = undefined };
+        var i: usize = 0;
+        while (i < 4) : (i += 1) {
+            s.enc_keys[0][i] = u.readU32Be(key[i * 4 ..][0..4]);
+        }
+        i = 1;
+        while (i <= 10) : (i += 1) {
+            const prev = s.enc_keys[i - 1];
+            const temp = subWord(rotWord(prev[3])) ^ (@as(u32, RCON[i - 1]) << 24);
+            s.enc_keys[i][0] = prev[0] ^ temp;
+            s.enc_keys[i][1] = prev[1] ^ s.enc_keys[i][0];
+            s.enc_keys[i][2] = prev[2] ^ s.enc_keys[i][1];
+            s.enc_keys[i][3] = prev[3] ^ s.enc_keys[i][2];
+        }
+        s.dec_keys[0] = s.enc_keys[10];
+        i = 1;
+        while (i <= 9) : (i += 1) {
+            const w = s.enc_keys[10 - i];
+            s.dec_keys[i][0] = invMixColWord(subWord(w[0]));
+            s.dec_keys[i][1] = invMixColWord(subWord(w[1]));
+            s.dec_keys[i][2] = invMixColWord(subWord(w[2]));
+            s.dec_keys[i][3] = invMixColWord(subWord(w[3]));
+        }
+        s.dec_keys[10] = s.enc_keys[0];
+        return s;
+    }
+
+    fn xtime(a: u8) u8 {
+        return if ((a & 0x80) != 0) (a << 1) ^ 0x1b else a << 1;
+    }
+
+    fn mul(a: u8, b: u8) u8 {
+        var p: u8 = 0;
+        var aa = a;
+        var bb = b;
+        while (bb > 0) : (bb >>= 1) {
+            if (bb & 1 != 0) p ^= aa;
+            aa = xtime(aa);
+        }
+        return p;
+    }
+
+    fn invMixColWord(w: u32) u32 {
+        const a0 = @truncate(w >> 24);
+        const a1 = @truncate(w >> 16);
+        const a2 = @truncate(w >> 8);
+        const a3 = @truncate(w);
+        const r0 = mul(a0, 0x0e) ^ mul(a1, 0x0b) ^ mul(a2, 0x0d) ^ mul(a3, 0x09);
+        const r1 = mul(a0, 0x09) ^ mul(a1, 0x0e) ^ mul(a2, 0x0b) ^ mul(a3, 0x0d);
+        const r2 = mul(a0, 0x0d) ^ mul(a1, 0x09) ^ mul(a2, 0x0e) ^ mul(a3, 0x0b);
+        const r3 = mul(a0, 0x0b) ^ mul(a1, 0x0d) ^ mul(a2, 0x09) ^ mul(a3, 0x0e);
+        return @as(u32, r0) << 24 | @as(u32, r1) << 16 | @as(u32, r2) << 8 | @as(u32, r3);
+    }
+
+    fn subBytes(state: *[16]u8) void {
+        var i: usize = 0;
+        while (i < 16) : (i += 1) {
+            state[i] = SBOX[state[i]];
+        }
+    }
+
+    fn invSubBytes(state: *[16]u8) void {
+        var i: usize = 0;
+        while (i < 16) : (i += 1) {
+            state[i] = INV_SBOX[state[i]];
+        }
+    }
+
+    fn shiftRows(state: *[16]u8) void {
+        var tmp: [16]u8 = state.*;
+        state[1] = tmp[5];
+        state[5] = tmp[9];
+        state[9] = tmp[13];
+        state[13] = tmp[1];
+        state[2] = tmp[10];
+        state[6] = tmp[14];
+        state[10] = tmp[2];
+        state[14] = tmp[6];
+        state[3] = tmp[15];
+        state[7] = tmp[3];
+        state[11] = tmp[7];
+        state[15] = tmp[11];
+    }
+
+    fn invShiftRows(state: *[16]u8) void {
+        var tmp: [16]u8 = state.*;
+        state[1] = tmp[13];
+        state[5] = tmp[1];
+        state[9] = tmp[5];
+        state[13] = tmp[9];
+        state[2] = tmp[6];
+        state[6] = tmp[10];
+        state[10] = tmp[14];
+        state[14] = tmp[2];
+        state[3] = tmp[11];
+        state[7] = tmp[15];
+        state[11] = tmp[3];
+        state[15] = tmp[7];
+    }
+
+    fn mixColumns(state: *[16]u8) void {
+        var i: usize = 0;
+        while (i < 16) : (i += 4) {
+            const a0 = state[i];
+            const a1 = state[i + 1];
+            const a2 = state[i + 2];
+            const a3 = state[i + 3];
+            state[i] = mul(0x02, a0) ^ mul(0x03, a1) ^ a2 ^ a3;
+            state[i + 1] = a0 ^ mul(0x02, a1) ^ mul(0x03, a2) ^ a3;
+            state[i + 2] = a0 ^ a1 ^ mul(0x02, a2) ^ mul(0x03, a3);
+            state[i + 3] = mul(0x03, a0) ^ a1 ^ a2 ^ mul(0x02, a3);
+        }
+    }
+
+    fn invMixColumns(state: *[16]u8) void {
+        var i: usize = 0;
+        while (i < 16) : (i += 4) {
+            const a0 = state[i];
+            const a1 = state[i + 1];
+            const a2 = state[i + 2];
+            const a3 = state[i + 3];
+            state[i] = mul(0x0e, a0) ^ mul(0x0b, a1) ^ mul(0x0d, a2) ^ mul(0x09, a3);
+            state[i + 1] = mul(0x09, a0) ^ mul(0x0e, a1) ^ mul(0x0b, a2) ^ mul(0x0d, a3);
+            state[i + 2] = mul(0x0d, a0) ^ mul(0x09, a1) ^ mul(0x0e, a2) ^ mul(0x0b, a3);
+            state[i + 3] = mul(0x0b, a0) ^ mul(0x0d, a1) ^ mul(0x09, a2) ^ mul(0x0e, a3);
+        }
+    }
+
+    fn addRoundKey(state: *[16]u8, round_key: *const [4]u32) void {
+        var i: usize = 0;
+        while (i < 4) : (i += 1) {
+            const k = round_key[i];
+            state[i * 4] ^= @truncate(k >> 24);
+            state[i * 4 + 1] ^= @truncate(k >> 16);
+            state[i * 4 + 2] ^= @truncate(k >> 8);
+            state[i * 4 + 3] ^= @truncate(k);
+        }
+    }
+
+    pub fn encrypt(a: *Aes128, plaintext: *const [16]u8) [16]u8 {
+        var state: [16]u8 = plaintext.*;
+        addRoundKey(&state, &a.enc_keys[0]);
+        var round: usize = 1;
+        while (round <= 9) : (round += 1) {
+            subBytes(&state);
+            shiftRows(&state);
+            mixColumns(&state);
+            addRoundKey(&state, &a.enc_keys[round]);
+        }
+        subBytes(&state);
+        shiftRows(&state);
+        addRoundKey(&state, &a.enc_keys[10]);
+        return state;
+    }
+
+    pub fn decrypt(a: *Aes128, ciphertext: *const [16]u8) [16]u8 {
+        var state: [16]u8 = ciphertext.*;
+        addRoundKey(&state, &a.dec_keys[0]);
+        var round: usize = 1;
+        while (round <= 9) : (round += 1) {
+            invShiftRows(&state);
+            invSubBytes(&state);
+            addRoundKey(&state, &a.dec_keys[round]);
+            invMixColumns(&state);
+        }
+        invShiftRows(&state);
+        invSubBytes(&state);
+        addRoundKey(&state, &a.dec_keys[10]);
+        return state;
+    }
+};
+
+pub const Aes256 = struct {
+    enc_keys: [15][4]u32,
+    dec_keys: [15][4]u32,
+
+    const SBOX = Aes128.SBOX;
+    const INV_SBOX = Aes128.INV_SBOX;
+    const RCON = [7]u8{ 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40 };
+
+    fn subWord(w: u32) u32 {
+        return @as(u32, SBOX[(w >> 24) & 0xFF]) << 24 |
+            @as(u32, SBOX[(w >> 16) & 0xFF]) << 16 |
+            @as(u32, SBOX[(w >> 8) & 0xFF]) << 8 |
+            @as(u32, SBOX[w & 0xFF]);
+    }
+
+    fn rotWord(w: u32) u32 {
+        return (w << 8) | (w >> 24);
+    }
+
+    pub fn init(key: *const [32]u8) Aes256 {
+        var s = Aes256{ .enc_keys = undefined, .dec_keys = undefined };
+        var i: usize = 0;
+        while (i < 8) : (i += 1) {
+            s.enc_keys[0][i % 4] = u.readU32Be(key[i * 4 ..][0..4]);
+        }
+        var rcon_idx: usize = 0;
+        i = 1;
+        while (i <= 14) : (i += 1) {
+            const prev = s.enc_keys[i - 1];
+            if (i % 2 == 1) {
+                const temp = subWord(rotWord(prev[3])) ^ (@as(u32, (if (rcon_idx < RCON.len) RCON[rcon_idx] else 0)) << 24);
+                rcon_idx += 1;
+                s.enc_keys[i][0] = prev[0] ^ temp;
+                s.enc_keys[i][1] = prev[1] ^ s.enc_keys[i][0];
+                s.enc_keys[i][2] = prev[2] ^ s.enc_keys[i][1];
+                s.enc_keys[i][3] = prev[3] ^ s.enc_keys[i][2];
+            } else {
+                s.enc_keys[i][0] = prev[0] ^ subWord(prev[3]);
+                s.enc_keys[i][1] = prev[1] ^ s.enc_keys[i][0];
+                s.enc_keys[i][2] = prev[2] ^ s.enc_keys[i][1];
+                s.enc_keys[i][3] = prev[3] ^ s.enc_keys[i][2];
+            }
+        }
+        return s;
+    }
+
+    pub fn encrypt(a: *Aes256, plaintext: *const [16]u8) [16]u8 {
+        var state: [16]u8 = plaintext.*;
+        Aes128.addRoundKey(&state, &a.enc_keys[0]);
+        var round: usize = 1;
+        while (round <= 13) : (round += 1) {
+            Aes128.subBytes(&state);
+            Aes128.shiftRows(&state);
+            Aes128.mixColumns(&state);
+            Aes128.addRoundKey(&state, &a.enc_keys[round]);
+        }
+        Aes128.subBytes(&state);
+        Aes128.shiftRows(&state);
+        Aes128.addRoundKey(&state, &a.enc_keys[14]);
+        return state;
+    }
+};
+
+test "AES-128 NIST vector" {
+    const key = [16]u8{ 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+    const pt = [16]u8{ 0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34 };
+    var aes = Aes128.init(&key);
+    const ct = aes.encrypt(&pt);
+    const expected = [16]u8{ 0x39, 0x25, 0x84, 0x1d, 0x02, 0xdc, 0x09, 0xfb, 0xdc, 0x11, 0x85, 0x97, 0x19, 0x6a, 0x0b, 0x32 };
+    for (ct, expected) |a, b| {
+        if (a != b) return error.TestUnexpectedResult;
+    }
+}
+
+test "AES-128 encrypt then decrypt" {
+    const key = [16]u8{ 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
+    const pt = [16]u8{ 0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34 };
+    var aes = Aes128.init(&key);
+    const ct = aes.encrypt(&pt);
+    const dt = aes.decrypt(&ct);
+    for (dt, pt) |a, b| {
+        if (a != b) return error.TestUnexpectedResult;
+    }
+}
