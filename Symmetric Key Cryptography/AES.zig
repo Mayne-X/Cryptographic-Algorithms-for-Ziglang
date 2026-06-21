@@ -257,27 +257,36 @@ pub const Aes256 = struct {
     pub fn init(key: *const [32]u8) Aes256 {
         var s = Aes256{ .enc_keys = undefined, .dec_keys = undefined };
         var i: usize = 0;
-        while (i < 8) : (i += 1) {
-            s.enc_keys[0][i % 4] = u.readU32Be(key[i * 4 ..][0..4]);
+        while (i < 4) : (i += 1) {
+            s.enc_keys[0][i] = u.readU32Be(key[i * 4 ..][0..4]);
+            s.enc_keys[1][i] = u.readU32Be(key[(i + 4) * 4 ..][0..4]);
         }
         var rcon_idx: usize = 0;
-        i = 1;
+        i = 2;
         while (i <= 14) : (i += 1) {
             const prev = s.enc_keys[i - 1];
-            if (i % 2 == 1) {
-                const temp = subWord(rotWord(prev[3])) ^ (@as(u32, (if (rcon_idx < RCON.len) RCON[rcon_idx] else 0)) << 24);
+            var temp: u32 = undefined;
+            if (i % 2 == 0) {
+                temp = subWord(rotWord(prev[3])) ^ (@as(u32, (if (rcon_idx < RCON.len) RCON[rcon_idx] else 0)) << 24);
                 rcon_idx += 1;
-                s.enc_keys[i][0] = prev[0] ^ temp;
-                s.enc_keys[i][1] = prev[1] ^ s.enc_keys[i][0];
-                s.enc_keys[i][2] = prev[2] ^ s.enc_keys[i][1];
-                s.enc_keys[i][3] = prev[3] ^ s.enc_keys[i][2];
             } else {
-                s.enc_keys[i][0] = prev[0] ^ subWord(prev[3]);
-                s.enc_keys[i][1] = prev[1] ^ s.enc_keys[i][0];
-                s.enc_keys[i][2] = prev[2] ^ s.enc_keys[i][1];
-                s.enc_keys[i][3] = prev[3] ^ s.enc_keys[i][2];
+                temp = subWord(prev[3]);
             }
+            s.enc_keys[i][0] = prev[0] ^ temp;
+            s.enc_keys[i][1] = prev[1] ^ s.enc_keys[i][0];
+            s.enc_keys[i][2] = prev[2] ^ s.enc_keys[i][1];
+            s.enc_keys[i][3] = prev[3] ^ s.enc_keys[i][2];
         }
+        s.dec_keys[0] = s.enc_keys[14];
+        i = 1;
+        while (i <= 13) : (i += 1) {
+            const w = s.enc_keys[14 - i];
+            s.dec_keys[i][0] = invMixColWord(w[0]);
+            s.dec_keys[i][1] = invMixColWord(w[1]);
+            s.dec_keys[i][2] = invMixColWord(w[2]);
+            s.dec_keys[i][3] = invMixColWord(w[3]);
+        }
+        s.dec_keys[14] = s.enc_keys[0];
         return s;
     }
 
@@ -294,6 +303,22 @@ pub const Aes256 = struct {
         Aes128.subBytes(&state);
         Aes128.shiftRows(&state);
         Aes128.addRoundKey(&state, &a.enc_keys[14]);
+        return state;
+    }
+
+    pub fn decrypt(a: *Aes256, ciphertext: *const [16]u8) [16]u8 {
+        var state: [16]u8 = ciphertext.*;
+        Aes128.addRoundKey(&state, &a.dec_keys[0]);
+        var round: usize = 1;
+        while (round <= 13) : (round += 1) {
+            Aes128.invShiftRows(&state);
+            Aes128.invSubBytes(&state);
+            Aes128.addRoundKey(&state, &a.dec_keys[round]);
+            Aes128.invMixColumns(&state);
+        }
+        Aes128.invShiftRows(&state);
+        Aes128.invSubBytes(&state);
+        Aes128.addRoundKey(&state, &a.dec_keys[14]);
         return state;
     }
 };
@@ -313,6 +338,20 @@ test "AES-128 encrypt then decrypt" {
     const key = [16]u8{ 0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c };
     const pt = [16]u8{ 0x32, 0x43, 0xf6, 0xa8, 0x88, 0x5a, 0x30, 0x8d, 0x31, 0x31, 0x98, 0xa2, 0xe0, 0x37, 0x07, 0x34 };
     var aes = Aes128.init(&key);
+    const ct = aes.encrypt(&pt);
+    const dt = aes.decrypt(&ct);
+    for (dt, pt) |a, b| {
+        if (a != b) return error.TestUnexpectedResult;
+    }
+}
+
+test "AES-256 encrypt then decrypt" {
+    const key = [32]u8{
+        0x60, 0x3d, 0xeb, 0x10, 0x15, 0xca, 0x71, 0xbe, 0x2b, 0x73, 0xae, 0xf0, 0x85, 0x7d, 0x77, 0x81,
+        0x1f, 0x35, 0x2c, 0x07, 0x3b, 0x61, 0x08, 0xd7, 0x2d, 0x98, 0x10, 0xa3, 0x09, 0x14, 0xdf, 0xf4,
+    };
+    const pt = [16]u8{ 0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a };
+    var aes = Aes256.init(&key);
     const ct = aes.encrypt(&pt);
     const dt = aes.decrypt(&ct);
     for (dt, pt) |a, b| {

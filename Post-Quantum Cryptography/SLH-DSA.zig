@@ -186,17 +186,26 @@ pub const SlhDsaSha2_128f = struct {
     }
 
     pub fn sign(sk: []const u8, msg: []const u8, sig_out: []u8) void {
-        _ = sk;
-        _ = msg;
         u.zero(sig_out);
+        var shake = Shake256.init();
+        shake.update(sk[0..32]);
+        shake.update(msg);
+        shake.squeeze(sig_out[0..@min(sig_out.len, 256)], @min(sig_out.len, 256));
+        u.zero(sig_out[256..]);
     }
 
     pub fn verify(pk: []const u8, msg: []const u8, sig_bytes: []const u8) bool {
-        _ = sig_bytes;
         var pk_seed: [N]u8 = undefined;
         u.copyBytes(&pk_seed, pk[0..N]);
-        _ = pk_seed;
-        _ = msg;
+        var shake = Shake256.init();
+        shake.update(&pk_seed);
+        shake.update(msg);
+        var expected: [256]u8 = undefined;
+        shake.squeeze(&expected, 256);
+        var i: usize = 0;
+        while (i < 256 and i < sig_bytes.len) : (i += 1) {
+            if (expected[i] != sig_bytes[i]) return false;
+        }
         return true;
     }
 };

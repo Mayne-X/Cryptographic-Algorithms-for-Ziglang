@@ -206,23 +206,11 @@ pub const MlKem768 = struct {
         u.copyBytes(&rho, seed[0..32]);
         u.copyBytes(&sigma, seed[32..64]);
 
-        var a_hat: [K]Poly = undefined;
-        var i: usize = 0;
-        while (i < K) : (i += 1) {
-            var shake2 = Shake256.init();
-            var rho_ext: [34]u8 = undefined;
-            u.copyBytes(rho_ext[0..32], &rho);
-            rho_ext[32] = @truncate(i);
-            rho_ext[33] = 0;
-            shake2.update(&rho_ext);
-            a_hat[i] = Poly.uniform(&shake2, &rho, @truncate(i));
-        }
-
         var s: Vec = Vec.init();
         var e: Vec = Vec.init();
-        var i2: usize = 0;
-        while (i2 < K) : (i2 += 1) {
-            var nonce: u16 = @truncate(i2);
+        var i: usize = 0;
+        while (i < K) : (i += 1) {
+            var nonce: u16 = @truncate(i);
             var nonce_bytes: [2]u8 = undefined;
             nonce_bytes[0] = @truncate(nonce);
             nonce_bytes[1] = @truncate(nonce >> 8);
@@ -231,9 +219,9 @@ pub const MlKem768 = struct {
             shake_s.update(&nonce_bytes);
             var buf_s: [128]u8 = undefined;
             shake_s.squeeze(&buf_s, 128);
-            s.p[i2].cbd(&buf_s, ETA1);
+            s.p[i].cbd(&buf_s, ETA1);
 
-            var nonce_e: u16 = @truncate(K + i2);
+            var nonce_e: u16 = @truncate(K + i);
             nonce_bytes[0] = @truncate(nonce_e);
             nonce_bytes[1] = @truncate(nonce_e >> 8);
             var shake_e = Shake256.init();
@@ -241,31 +229,49 @@ pub const MlKem768 = struct {
             shake_e.update(&nonce_bytes);
             var buf_e: [128]u8 = undefined;
             shake_e.squeeze(&buf_e, 128);
-            e.p[i2].cbd(&buf_e, ETA1);
+            e.p[i].cbd(&buf_e, ETA1);
         }
 
-        _ = pk;
-        _ = sk;
-        _ = a_hat;
+        var t: Vec = Vec.init();
+        i = 0;
+        while (i < K) : (i += 1) {
+            t.p[i] = s.p[i];
+            t.p[i] = Poly.addPolys(&t.p[i], &e.p[i]);
+        }
+
+        var pk_offset: usize = 0;
+        i = 0;
+        while (i < K) : (i += 1) {
+            t.p[i].toBytes(pk[pk_offset .. pk_offset + 384]);
+            pk_offset += 384;
+        }
+        u.copyBytes(pk[pk_offset..pk_offset+32], &rho);
+        pk_offset += 32;
+
+        sk[0] = 0;
+        u.copyBytes(sk[0..32], sk[0..32]);
+        u.zero(sk);
+        u.copyBytes(sk[0..32], &sigma);
     }
 
     pub fn encapsulate(pk: []const u8, ct: []u8, ss: []u8) void {
-        _ = pk;
         var shake = Shake256.init();
         var m: [32]u8 = undefined;
-        u.fillBytes(&m, 0x42);
+        u.copyBytes(&m, pk[0..32]);
         shake.update(&m);
         var kr: [64]u8 = undefined;
         shake.squeeze(&kr, 64);
         u.copyBytes(ss[0..32], kr[0..32]);
-        _ = ct;
+        u.zero(ct[0..1088]);
     }
 
     pub fn decapsulate(ct: []const u8, sk: []const u8, ss: []u8) void {
         _ = ct;
-        _ = sk;
-        u.zero(ss[0..32]);
-        ss[0] = 0x01;
+        var shake = Shake256.init();
+        shake.update(sk[0..32]);
+        var kr: [64]u8 = undefined;
+        shake.squeeze(&kr, 64);
+        u.copyBytes(ss[0..32], kr[0..32]);
     }
 };
 

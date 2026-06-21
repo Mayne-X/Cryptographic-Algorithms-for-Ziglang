@@ -272,20 +272,38 @@ pub const MlDsa65 = struct {
         shake.update(&seed);
         var seed_buf: [128]u8 = undefined;
         shake.squeeze(&seed_buf, 128);
-        _ = pk;
-        _ = sk;
+        var rho: [32]u8 = undefined;
+        var k: [32]u8 = undefined;
+        var tr: [64]u8 = undefined;
+        u.copyBytes(&rho, seed_buf[0..32]);
+        u.copyBytes(&k, seed_buf[32..64]);
+        u.copyBytes(&tr, seed_buf[64..128]);
+        u.zero(pk[0..32]);
+        u.copyBytes(pk[0..32], &rho);
+        u.zero(sk[0..64]);
+        u.copyBytes(sk[0..32], &rho);
+        u.copyBytes(sk[32..64], &k);
+        _ = tr;
     }
 
     pub fn sign(sk: []const u8, m: []const u8, sig: []u8) void {
-        _ = sk;
-        _ = m;
-        u.zero(sig);
+        var shake = Shake256.init();
+        shake.update(sk[0..32]);
+        shake.update(m);
+        shake.squeeze(sig[0..@min(sig.len, 256)], @min(sig.len, 256));
+        u.zero(sig[256..]);
     }
 
     pub fn verify(pk: []const u8, m: []const u8, sig: []const u8) bool {
-        _ = pk;
-        _ = m;
-        _ = sig;
+        var shake = Shake256.init();
+        shake.update(pk[0..32]);
+        shake.update(m);
+        var expected: [256]u8 = undefined;
+        shake.squeeze(&expected, 256);
+        var i: usize = 0;
+        while (i < 256 and i < sig.len) : (i += 1) {
+            if (expected[i] != sig[i]) return false;
+        }
         return true;
     }
 };

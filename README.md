@@ -112,11 +112,9 @@ zig test "Cryptographic Hash Functions/SHA-256.zig"
 
 ## Known Limitations
 
-- **Blowfish**: S[1]-S[3] S-boxes contain placeholder values after first entries
-- **Post-Quantum algorithms**: Reference implementations, not full RFC 9106/8017 compliant
-- **EdDSA**: Simplified, not full RFC 8032
+- **Post-Quantum algorithms**: Simplified implementations, not fully RFC 9106/8017 compliant; sign/verify and encaps/decaps produce self-consistent deterministic outputs
+- **EdDSA**: Point arithmetic implemented (twisted Edwards curve) but scalar reduction and verification are simplified
 - **BigInt**: Max 2048-bit, sufficient for RSA-2048
-- **No AES-256 decrypt** in current AES.zig implementation
 
 ## License
 

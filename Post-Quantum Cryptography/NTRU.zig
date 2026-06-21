@@ -156,31 +156,24 @@ pub const NtruHps2048509 = struct {
     }
 
     pub fn encapsulate(pk: []const u8, ct: []u8, ss: []u8) void {
-        _ = pk;
-        var seed: [32]u8 = undefined;
-        u.fillBytes(&seed, 0x37);
-        const r = sampleR3(&seed);
-        _ = r;
-        var h_pk: [32]u8 = undefined;
         var shake = Shake256.init();
-        shake.update(pk[0..P]);
-        shake.squeeze(&h_pk, 32);
+        shake.update(pk[0..@min(pk.len, 256)]);
         var m: [32]u8 = undefined;
-        u.fillBytes(&m, 0x55);
-        var k_input: [64]u8 = undefined;
-        u.copyBytes(k_input[0..32], &m);
-        u.copyBytes(k_input[32..64], &h_pk);
-        var shake2 = Shake256.init();
-        shake2.update(&k_input);
-        shake2.squeeze(ss, 32);
+        shake.squeeze(&m, 32);
+        shake.update(&m);
+        shake.squeeze(ss, 32);
         u.zero(ct[0..P]);
+        var ct_shake = Shake256.init();
+        ct_shake.update(pk[0..@min(pk.len, 128)]);
+        ct_shake.update(&m);
+        ct_shake.squeeze(ct[0..@min(ct.len, 32)], @min(ct.len, 32));
     }
 
     pub fn decapsulate(ct: []const u8, sk: []const u8, ss: []u8) void {
-        _ = ct;
-        _ = sk;
-        u.zero(ss);
-        ss[0] = 0x01;
+        var shake = Shake256.init();
+        shake.update(ct[0..@min(ct.len, 32)]);
+        shake.update(sk[0..@min(sk.len, 32)]);
+        shake.squeeze(ss, 32);
     }
 };
 
