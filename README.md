@@ -11,7 +11,15 @@ A pure Zig implementation of 20 core cryptographic algorithms with **zero std or
 │   ├── SHA-256.zig                      # SHA-256 + SHA-512
 │   ├── SHA3.zig                         # SHA3-256 + SHAKE128 + SHAKE256
 │   ├── BLAKE2.zig                       # BLAKE2b
-│   └── BLAKE3.zig                       # BLAKE3
+│   ├── BLAKE3.zig                       # BLAKE3
+│   ├── RIPEMD.zig                       # RIPEMD-160 + RIPEMD-320
+│   ├── Whirlpool.zig                    # Whirlpool-512
+│   ├── Tiger.zig                        # Tiger/192
+│   ├── MD5.zig                          # MD5
+│   ├── SHA1.zig                         # SHA-1
+│   ├── SHA224_384.zig                   # SHA-224 + SHA-384
+│   ├── Skein.zig                        # Skein-256 + Skein-512
+│   └── Grostl.zig                       # Grøstl-256 + Grøstl-512
 ├── Symmetric Key Cryptography/
 │   ├── AES.zig                          # AES-128 + AES-256
 │   ├── ChaCha20.zig                     # ChaCha20 + HChaCha20
@@ -36,13 +44,21 @@ A pure Zig implementation of 20 core cryptographic algorithms with **zero std or
 
 ## Algorithms Implemented
 
-### Cryptographic Hash Functions (4)
+### Cryptographic Hash Functions (15)
 | Algorithm | File | Notes |
 |-----------|------|-------|
 | SHA-256 | `SHA-256.zig` | + SHA-512 |
 | SHA3-256 | `SHA3.zig` | + SHAKE128, SHAKE256 |
 | BLAKE2b | `BLAKE2.zig` | 64-bit optimized |
 | BLAKE3 | `BLAKE3.zig` | Streaming hash |
+| RIPEMD-160/320 | `RIPEMD.zig` | 160/320-bit output |
+| Whirlpool | `Whirlpool.zig` | 512-bit output |
+| Tiger | `Tiger.zig` | 192-bit output |
+| MD5 | `MD5.zig` | Legacy, 128-bit |
+| SHA-1 | `SHA1.zig` | Legacy, 160-bit |
+| SHA-224/384 | `SHA224_384.zig` | Truncated SHA-256/512 |
+| Skein-256/512 | `Skein.zig` | Threefish-based |
+| Grøstl-256/512 | `Grostl.zig` | AES-based permutation |
 
 ### Symmetric Key Cryptography (4)
 | Algorithm | File | Notes |
