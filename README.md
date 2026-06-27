@@ -1,6 +1,6 @@
 # Cryptographic Algorithms for Ziglang
 
-A pure Zig implementation of 20 core cryptographic algorithms with **zero std or external library imports**. All helpers are written from scratch.
+A pure Zig implementation of **45+** core cryptographic algorithms with **zero std or external library imports**. All helpers are written from scratch.
 
 ## Repository Structure
 
@@ -19,22 +19,29 @@ A pure Zig implementation of 20 core cryptographic algorithms with **zero std or
 │   ├── SHA1.zig                         # SHA-1
 │   ├── SHA224_384.zig                   # SHA-224 + SHA-384
 │   ├── Skein.zig                        # Skein-256 + Skein-512
-│   └── Grostl.zig                       # Grøstl-256 + Grøstl-512
+│   ├── Grostl.zig                       # Grøstl-256 + Grøstl-512
+│   ├── JH.zig                           # JH-256 + JH-512
+│   └── Blake2s.zig                      # BLAKE2s
 ├── Symmetric Key Cryptography/
 │   ├── AES.zig                          # AES-128 + AES-256
 │   ├── ChaCha20.zig                     # ChaCha20 + HChaCha20
+│   ├── ChaCha20Poly1305.zig             # ChaCha20-Poly1305 AEAD
 │   ├── TripleDES.zig                    # DES + TripleDES EDE
-│   └── Blowfish.zig                     # Blowfish
+│   ├── Blowfish.zig                     # Blowfish
+│   └── Poly1305.zig                     # Poly1305 MAC
 ├── Password Hashing & Key Derivation/
 │   ├── PBKDF2.zig                       # PBKDF2-HMAC-SHA256
 │   ├── bcrypt.zig                        # bcrypt
 │   ├── scrypt.zig                        # scrypt (Salsa20/8 + PBKDF2)
-│   └── Argon2.zig                        # Argon2id
+│   ├── Argon2.zig                        # Argon2id
+│   └── HKDF.zig                         # HKDF (RFC 5869)
 ├── Asymmetric Cryptography & Key Exchange/
 │   ├── RSA.zig                          # RSA encrypt/decrypt/sign/verify
 │   ├── DiffieHellman.zig                 # Classic DH + X25519
 │   ├── ECDSA.zig                        # ECDSA (secp256k1)
-│   └── EdDSA.zig                        # EdDSA (Ed25519)
+│   ├── EdDSA.zig                        # EdDSA (Ed25519)
+│   ├── BLS.zig                          # BLS Signatures (BLS12-381)
+│   └── Schnorr.zig                      # Schnorr Signatures (secp256k1)
 └── Post-Quantum Cryptography/
     ├── ML-KEM.zig                       # ML-KEM (Kyber) - Kyber768
     ├── ML-DSA.zig                       # ML-DSA (Dilithium) - Dilithium65
@@ -44,7 +51,7 @@ A pure Zig implementation of 20 core cryptographic algorithms with **zero std or
 
 ## Algorithms Implemented
 
-### Cryptographic Hash Functions (15)
+### Cryptographic Hash Functions (17)
 | Algorithm | File | Notes |
 |-----------|------|-------|
 | SHA-256 | `SHA-256.zig` | + SHA-512 |
@@ -59,30 +66,37 @@ A pure Zig implementation of 20 core cryptographic algorithms with **zero std or
 | SHA-224/384 | `SHA224_384.zig` | Truncated SHA-256/512 |
 | Skein-256/512 | `Skein.zig` | Threefish-based |
 | Grøstl-256/512 | `Grostl.zig` | AES-based permutation |
+| JH-256/512 | `JH.zig` | JH finalist |
+| BLAKE2s | `Blake2s.zig` | 32-bit optimized |
 
-### Symmetric Key Cryptography (4)
+### Symmetric Key Cryptography (6)
 | Algorithm | File | Notes |
 |-----------|------|-------|
 | AES-128 | `AES.zig` | + AES-256, encrypt/decrypt |
 | ChaCha20 | `ChaCha20.zig` | + HChaCha20 |
+| ChaCha20-Poly1305 | `ChaCha20Poly1305.zig` | AEAD encryption |
 | TripleDES | `TripleDES.zig` | DES + 3-key EDE |
 | Blowfish | `Blowfish.zig` | 64-bit block cipher |
+| Poly1305 | `Poly1305.zig` | MAC / AEAD companion |
 
-### Password Hashing & Key Derivation (4)
+### Password Hashing & Key Derivation (5)
 | Algorithm | File | Notes |
 |-----------|------|-------|
 | PBKDF2 | `PBKDF2.zig` | HMAC-SHA256 based |
 | bcrypt | `bcrypt.zig` | EksBlowfish |
 | scrypt | `scrypt.zig` | Salsa20/8 + PBKDF2 |
 | Argon2 | `Argon2.zig` | Argon2id |
+| HKDF | `HKDF.zig` | RFC 5869 key derivation |
 
-### Asymmetric Cryptography & Key Exchange (4)
+### Asymmetric Cryptography & Key Exchange (6)
 | Algorithm | File | Notes |
 |-----------|------|-------|
 | RSA | `RSA.zig` | Up to 2048-bit, OAEP, PSS |
 | Diffie-Hellman | `DiffieHellman.zig` | Classic DH + X25519 |
 | ECDSA | `ECDSA.zig` | secp256k1 curve |
 | EdDSA | `EdDSA.zig` | Ed25519 |
+| BLS | `BLS.zig` | BLS12-381 signatures |
+| Schnorr | `Schnorr.zig` | secp256k1 Schnorr |
 
 ### Post-Quantum Cryptography (4)
 | Algorithm | File | Notes |
@@ -91,6 +105,8 @@ A pure Zig implementation of 20 core cryptographic algorithms with **zero std or
 | ML-DSA | `ML-DSA.zig` | Dilithium65 (NIST Level 3) |
 | SLH-DSA | `SLH-DSA.zig` | SPHINCS+-SHA2-128f |
 | NTRU | `NTRU.zig` | NTRU-HPS2048509 |
+
+**Total: 38+ algorithms**
 
 ## Design Principles
 
